@@ -1,0 +1,234 @@
+use crate::config::ConfigRef;
+use crate::database::Database;
+use crate::database::DatabaseClient;
+use crate::database::Hierarchy as DbHierarchy;
+use crate::database::Region as DbRegion;
+use crate::handler::error::HandlerError;
+use crate::handler::error::HandlerResult;
+use crate::handler::util::handle_request;
+use iron::middleware::Handler;
+use iron::IronResult;
+use iron::Request as IromRequest;
+use iron::Response as IromResponse;
+use std::collections::HashMap;
+
+#[derive(Debug)]
+pub struct FindRegionHandler {
+    config: ConfigRef,
+}
+
+impl FindRegionHandler {
+    pub fn new(config: ConfigRef) -> FindRegionHandler {
+        FindRegionHandler { config }
+    }
+
+    fn prepare_query(&self, query: String) -> HandlerResult<(String, Vec<String>)> {
+        if query.is_empty() {
+            return Err(HandlerError::new("Region name query must not be empty"));
+        }
+
+        let query_parts: Vec<_> = query
+            .split('>')
+            .map(|name| name.trim().to_lowercase())
+            .collect();
+
+        if query_parts.iter().any(|name| name.is_empty()) {
+            return Err(HandlerError::new("Region name must not be empty"));
+        }
+
+        match query_parts.last() {
+            Some(last) => Ok((last.into(), query_parts)),
+            None => Err(HandlerError::new("Query must contain at least one part")),
+        }
+    }
+
+    fn prepare_connection(&self, index: usize) -> HandlerResult<DatabaseClient> {
+        let connection = match self.config.connections().static_connections().get(index) {
+            Some(connection) => connection,
+            None => {
+                return Err(HandlerError::new(&format!(
+                    "Invalid connection index `{}`",
+                    index
+                )))
+            }
+        };
+        let query_schema = match self.config.query_schemas().get(connection.query_schema()) {
+            Some(query_schema) => query_schema,
+            None => {
+                return Err(HandlerError::new(&format!(
+                    "Invalid query schema `{}` in connection `{}`",
+                    connection.query_schema(),
+                    connection.description(),
+                )))
+            }
+        };
+
+        Database::new(connection, query_schema)
+            .connect()
+            .map_err(|_| HandlerError::new("Failed to connect to database"))
+    }
+
+    fn collect_hierarchy<I>(
+        &self,
+        client: &mut DatabaseClient,
+        it: I,
+    ) -> HandlerResult<Vec<DbHierarchy>>
+    where
+        I: IntoIterator<Item = i64>,
+    {
+        let mut result = Vec::new();
+
+        for region_id in it.into_iter() {
+            let hierarchy = client
+                .hierarchy_by_id(region_id)
+                .map_err(|_| HandlerError::new("Failed to query hierarchy"))?;
+
+            result.extend(hierarchy);
+        }
+
+        Ok(result)
+    }
+
+    fn collect_all_regions(
+        &self,
+        client: &mut DatabaseClient,
+        regions: &HashMap<i64, DbRegion>,
+        hierarchies: &[DbHierarchy],
+    ) -> HandlerResult<HashMap<i64, DbRegion>> {
+        let mut result = HashMap::new();
+
+        for hierarchy in hierarchies {
+            let region_id = hierarchy.id();
+
+            result.insert(region_id, self.load_region(client, regions, region_id)?);
+
+            for &region_id in hierarchy.parts() {
+                result.insert(region_id, self.load_region(client, regions, region_id)?);
+            }
+        }
+
+        Ok(result)
+    }
+
+    fn load_region(
+        &self,
+        client: &mut DatabaseClient,
+        regions: &HashMap<i64, DbRegion>,
+        region_id: i64,
+    ) -> HandlerResult<DbRegion> {
+        match regions.get(&region_id) {
+            Some(region) => Ok(region.clone()),
+            None => client
+                .region_by_id(region_id)
+                .map_err(|_| HandlerError::new("Failed to query hierarchy")),
+        }
+    }
+
+    fn collect_query_hierarchies<'a>(
+        &self,
+        query_parts: &[String],
+        regions: &HashMap<i64, DbRegion>,
+        hierarchies: &'a [DbHierarchy],
+    ) -> Vec<&'a DbHierarchy> {
+        hierarchies
+            .iter()
+            .filter(|hierarchy| self.is_hierarchy_matches(hierarchy, query_parts, regions))
+            .collect()
+    }
+
+    fn is_hierarchy_matches(
+        &self,
+        _hierarchy: &DbHierarchy,
+        _query_parts: &[String],
+        _regions: &HashMap<i64, DbRegion>,
+    ) -> bool {
+        true
+    }
+}
+
+impl Handler for FindRegionHandler {
+    fn handle(&self, request: &mut IromRequest) -> IronResult<IromResponse> {
+        handle_request(request, move |request: Request| {
+            let (name, query_parts) = self.prepare_query(request.query)?;
+            let mut client = self.prepare_connection(request.connection)?;
+            let query_regions = client
+                .regions_by_name(&name)
+                .map_err(|_| HandlerError::new("Failed to query region by name"))?;
+            let extended_hierarchies =
+                self.collect_hierarchy(&mut client, query_regions.keys().cloned())?;
+            let all_regions =
+                self.collect_all_regions(&mut client, &query_regions, &extended_hierarchies)?;
+            let query_hierarchies =
+                self.collect_query_hierarchies(&query_parts, &all_regions, &extended_hierarchies);
+
+            // println!("       query_regions = {:?}", query_regions);
+            // println!("extended_hierarchies = {:?}", extended_hierarchies);
+            // println!("         all_regions = {:?}", all_regions);
+            // println!("   query_hierarchies = {:?}", query_hierarchies);
+
+            let regions = all_regions
+                .into_iter()
+                .map(|(id, region)| (id, region.into()))
+                .collect();
+            let hierarchies = query_hierarchies.into_iter().map(Hierarchy::from).collect();
+
+            Ok(Response {
+                regions,
+                hierarchies,
+            })
+        })
+    }
+}
+
+#[derive(Debug, Deserialize)]
+struct Request {
+    connection: usize,
+    query: String,
+}
+
+#[derive(Debug, Serialize)]
+struct Response {
+    regions: HashMap<i64, Region>,
+    hierarchies: Vec<Hierarchy>,
+}
+
+#[derive(Debug, Serialize)]
+struct Region {
+    default_name: String,
+    names: HashMap<String, String>,
+}
+
+impl From<DbRegion> for Region {
+    fn from(region: DbRegion) -> Region {
+        Region {
+            default_name: region.default_name().into(),
+            names: region
+                .names()
+                .iter()
+                .map(|name| (name.language().into(), name.name().into()))
+                .collect(),
+        }
+    }
+}
+
+#[derive(Debug, Serialize)]
+struct Hierarchy {
+    id: i64,
+    parts: Vec<i64>,
+    bigger: bool,
+}
+
+impl From<&DbHierarchy> for Hierarchy {
+    fn from(hierarchy: &DbHierarchy) -> Hierarchy {
+        let bigger = match hierarchy.parts().last() {
+            Some(&id) => id == hierarchy.id(),
+            None => false,
+        };
+
+        Hierarchy {
+            id: hierarchy.id(),
+            parts: hierarchy.parts().into(),
+            bigger,
+        }
+    }
+}

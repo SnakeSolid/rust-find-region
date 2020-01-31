@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Find Region</title>
+
+    <link rel="icon" sizes="16x16" type="image/x-icon" href="/static/favicon-x16.png" />
+    <link rel="icon" sizes="32x32" type="image/x-icon" href="/static/favicon-x32.png" />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/semantic-ui/2.4.1/semantic.min.css"
+      integrity="sha256-9mbkOfVho3ZPXfM7W8sV2SndrGDuh7wuyLjtsWeTI1Q="
+      crossorigin="anonymous"
+    />
+
+    <script
+      async
+      data-main="/static/js/init.js"
+      src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js"
+      integrity="sha256-1fEPhSsRKlFKGfK3eO710tEweHh1fwokU5wFGDHO+vg="
+      crossorigin="anonymous"
+    ></script>
+  </head>
+  <body>
+    <div class="ui grid">
+      <div class="two wide column"></div>
+
+      <div class="twelve wide column">
+        <div class="ui secondary pointing menu"><div class="header item">Hierarchical region search</div></div>
+
+        <div class="ui vertical segment">
+          <form class="ui form" data-bind="css: { loading: loading }, submit: searchRegion">
+            <div class="field" data-bind="css: { error: isConnectionInvalid }">
+              <label for="database">Database:</label>
+
+              <select
+                class="ui fluid dropdown"
+                id="database"
+                tabindex="1"
+                data-bind="
+                  options: availableConnections,
+                  optionsText: 'description',
+                  optionsValue: 'index',
+                  value: selectedConnection,
+                  optionsCaption: 'Choose connection...'"
+              >
+              </select>
+            </div>
+
+            <div class="field" data-bind="css: { error: isRegionNameInvalid }">
+              <label for="region-name">Name hierarchy:</label>
+              <input
+                type="text"
+                id="region-name"
+                tabindex="2"
+                placeholder="britain > london"
+                data-bind="textInput: queryRegionHierarchy"
+              />
+            </div>
+
+            <div class="two ui buttons">
+              <div
+                type="submit"
+                class="ui primary button"
+                tabindex="3"
+                data-bind="css: { disabled: isFormInvalid }, click: searchRegion"
+              >
+                Search...
+              </div>
+            </div>
+          </form>
+
+          <table class="ui compact striped table" data-bind="visible: isHierarchyAvailable">
+            <thead>
+              <tr>
+                <th></th>
+                <th>Id</th>
+                <th>Hierarchy</th>
+                <th>Area XML</th>
+              </tr>
+            </thead>
+
+            <tbody data-bind="foreach: regionHierarchies">
+              <tr data-bind="css: { warning: bigger }">
+                <td>
+                  <i
+                    class="exclamation triangle icon"
+                    title="This area includes bigger region"
+                    data-bind="visible: bigger"
+                  ></i>
+                </td>
+                <td data-bind="text: id"></td>
+                <td data-bind="text: $parent.namedHierarhy($data)"></td>
+                <td data-bind="text: $parent.areaCode($data)"></td>
+              </tr>
+            </tbody>
+          </table>
+
+          <div class="ui error icon message" data-bind="visible: isErrorMessagePresent">
+            <i class="exclamation triangle icon"></i>
+            <div class="content">
+              <div class="header">Error occurred</div>
+              <p data-bind="text: errorMessage"></p>
+            </div>
+          </div>
+        </div>
+
+        <div class="two wide column"></div>
+      </div>
+    </div>
+  </body>
+</html>
