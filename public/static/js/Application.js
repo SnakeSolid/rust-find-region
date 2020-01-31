@@ -109,8 +109,8 @@ define(["knockout", "reqwest", "handlers"], function(ko, reqwest, _handlers) {
 	Application.prototype.updateLanguageList = function() {
 		const languages = new Set();
 
-		Object.values(this.regionNames()).forEach(function (region) {
-			Object.keys(region.names).forEach(function (name) {
+		Object.values(this.regionNames()).forEach(function(region) {
+			Object.keys(region.names).forEach(function(name) {
 				languages.add(name);
 			});
 		});
