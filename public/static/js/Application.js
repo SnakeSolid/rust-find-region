@@ -6,6 +6,8 @@ define(["knockout", "reqwest", "handlers"], function(ko, reqwest, _handlers) {
 		this.selectedConnection = ko.observable(undefined);
 		this.availableConnections = ko.observableArray([]);
 		this.queryRegionHierarchy = ko.observable("");
+		this.preferredLanguage = ko.observable("");
+		this.availableLanguages = ko.observableArray([]);
 		this.regionNames = ko.observable({});
 		this.regionHierarchies = ko.observableArray([]);
 		this.errorMessage = ko.observable("");
@@ -34,10 +36,10 @@ define(["knockout", "reqwest", "handlers"], function(ko, reqwest, _handlers) {
 			return this.errorMessage() !== "";
 		}, this);
 
-		this.loadConnections();
+		this.updateConnections();
 	};
 
-	Application.prototype.loadConnections = function() {
+	Application.prototype.updateConnections = function() {
 		this.loading(true);
 
 		reqwest({
@@ -85,6 +87,8 @@ define(["knockout", "reqwest", "handlers"], function(ko, reqwest, _handlers) {
 						this.regionNames(resp.result.regions);
 						this.regionHierarchies(resp.result.hierarchies);
 						this.errorMessage("");
+
+						this.updateLanguageList();
 					} else {
 						this.regionNames({});
 						this.regionHierarchies([]);
@@ -102,13 +106,27 @@ define(["knockout", "reqwest", "handlers"], function(ko, reqwest, _handlers) {
 			);
 	};
 
+	Application.prototype.updateLanguageList = function() {
+		const languages = new Set();
+
+		Object.values(this.regionNames()).forEach(function (region) {
+			Object.keys(region.names).forEach(function (name) {
+				languages.add(name);
+			});
+		});
+
+		this.availableLanguages(Array.from(languages).sort());
+	};
+
 	Application.prototype.namedHierarhy = function(hierarchy) {
 		const partNames = [];
 		const regionNames = this.regionNames();
+		const preferredLanguage = this.preferredLanguage();
 
 		for (const partId of hierarchy.parts) {
 			if (partId in regionNames) {
-				const name = regionNames[partId].default_name;
+				const region = regionNames[partId];
+				const name = region.names[preferredLanguage] || region.default_name;
 
 				partNames.push(name);
 			} else {

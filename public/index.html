@@ -31,21 +31,35 @@
 
         <div class="ui vertical segment">
           <form class="ui form" data-bind="css: { loading: loading }, submit: searchRegion">
-            <div class="field" data-bind="css: { error: isConnectionInvalid }">
-              <label for="database">Database:</label>
-
-              <select
-                class="ui fluid dropdown"
-                id="database"
-                tabindex="1"
-                data-bind="
-                  options: availableConnections,
-                  optionsText: 'description',
-                  optionsValue: 'index',
-                  value: selectedConnection,
-                  optionsCaption: 'Choose connection...'"
-              >
-              </select>
+            <div class="two fields">
+              <div class="twelve wide field" data-bind="css: { error: isConnectionInvalid }">
+                <label for="database">Database:</label>
+                <select
+                  class="ui fluid dropdown"
+                  id="database"
+                  tabindex="1"
+                  data-bind="
+                    options: availableConnections,
+                    optionsText: 'description',
+                    optionsValue: 'index',
+                    value: selectedConnection,
+                    optionsCaption: 'Choose connection...'"
+                >
+                </select>
+              </div>
+              <div class="four wide field">
+                <label for="preferred-language">Preferred language:</label>
+                <select
+                  class="ui fluid dropdown"
+                  id="preferred-language"
+                  tabindex="2"
+                  data-bind="
+                    options: availableLanguages,
+                    value: preferredLanguage,
+                    optionsCaption: 'Not selected'"
+                >
+                </select>
+              </div>
             </div>
 
             <div class="field" data-bind="css: { error: isRegionNameInvalid }">
@@ -53,21 +67,23 @@
               <input
                 type="text"
                 id="region-name"
-                tabindex="2"
+                tabindex="3"
                 placeholder="britain > london"
                 data-bind="textInput: queryRegionHierarchy"
               />
             </div>
 
             <div class="two ui buttons">
-              <div
-                type="submit"
+              <button
                 class="ui primary button"
-                tabindex="3"
+                tabindex="4"
                 data-bind="css: { disabled: isFormInvalid }, click: searchRegion"
               >
-                Search...
-              </div>
+                Search
+              </button>
+              <button type="submit" class="ui button" tabindex="5" data-bind="click: updateConnections">
+                Update connections
+              </button>
             </div>
           </form>
 
