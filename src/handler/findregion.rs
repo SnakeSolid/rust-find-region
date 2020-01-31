@@ -11,6 +11,7 @@ use iron::IronResult;
 use iron::Request as IromRequest;
 use iron::Response as IromResponse;
 use std::collections::HashMap;
+use std::collections::HashSet;
 
 #[derive(Debug)]
 pub struct FindRegionHandler {
@@ -76,17 +77,9 @@ impl FindRegionHandler {
     where
         I: IntoIterator<Item = i64>,
     {
-        let mut result = Vec::new();
-
-        for region_id in it.into_iter() {
-            let hierarchy = client
-                .hierarchy_by_id(region_id)
-                .map_err(|_| HandlerError::new("Failed to query hierarchy"))?;
-
-            result.extend(hierarchy);
-        }
-
-        Ok(result)
+        client
+            .hierarchy_by_id(it)
+            .map_err(|_| HandlerError::new("Failed to query hierarchy"))
     }
 
     fn collect_all_regions(
@@ -95,33 +88,24 @@ impl FindRegionHandler {
         regions: &HashMap<i64, DbRegion>,
         hierarchies: &[DbHierarchy],
     ) -> HandlerResult<HashMap<i64, DbRegion>> {
-        let mut result = HashMap::new();
+        let mut region_ids = HashSet::new();
 
         for hierarchy in hierarchies {
-            let region_id = hierarchy.id();
-
-            result.insert(region_id, self.load_region(client, regions, region_id)?);
-
-            for &region_id in hierarchy.parts() {
-                result.insert(region_id, self.load_region(client, regions, region_id)?);
-            }
+            region_ids.insert(hierarchy.id());
+            region_ids.extend(hierarchy.parts());
         }
+
+        let extended_regions = client
+            .regions_by_id(
+                region_ids
+                    .into_iter()
+                    .filter(|region_id| !regions.contains_key(region_id)),
+            )
+            .map_err(|_| HandlerError::new("Failed to query region name"))?;
+        let mut result = regions.clone();
+        result.extend(extended_regions);
 
         Ok(result)
-    }
-
-    fn load_region(
-        &self,
-        client: &mut DatabaseClient,
-        regions: &HashMap<i64, DbRegion>,
-        region_id: i64,
-    ) -> HandlerResult<DbRegion> {
-        match regions.get(&region_id) {
-            Some(region) => Ok(region.clone()),
-            None => client
-                .region_by_id(region_id)
-                .map_err(|_| HandlerError::new("Failed to query hierarchy")),
-        }
     }
 
     fn collect_query_hierarchies<'a>(
@@ -221,8 +205,8 @@ struct Hierarchy {
 impl From<&DbHierarchy> for Hierarchy {
     fn from(hierarchy: &DbHierarchy) -> Hierarchy {
         let bigger = match hierarchy.parts().last() {
-            Some(&id) => id == hierarchy.id(),
-            None => false,
+            Some(&id) => id != hierarchy.id(),
+            None => true,
         };
 
         Hierarchy {

@@ -6,6 +6,7 @@ pub use self::error::DatabaseResult;
 use crate::config::ConnectionSettings;
 use crate::config::QuerySchemaSettings;
 use postgres::config::Config;
+use postgres::row::Row;
 use postgres::Client;
 use postgres::NoTls;
 use std::collections::HashMap;
@@ -60,36 +61,38 @@ impl<'a> DatabaseClient<'a> {
         }
     }
 
-    pub fn region_by_id(&mut self, id: i64) -> DatabaseResult<Region> {
-        debug!("Get region names by id: id = {}", id);
+    pub fn regions_by_id<I>(&mut self, it: I) -> DatabaseResult<HashMap<i64, Region>>
+    where
+        I: IntoIterator<Item = i64>,
+    {
+        let ids: Vec<i64> = it.into_iter().collect();
 
-        let mut builder = RegionBuilder::new();
+        debug!("Get region names by id: ids = {:?}", ids);
 
-        for row in self
+        let rows = self
             .client
-            .query(self.query_schema.region_by_id(), &[&id])
-            .map_err(DatabaseError::query_execution_error)?
-        {
-            let language: String = row.try_get(0).map_err(DatabaseError::value_error)?;
-            let name: String = row.try_get(1).map_err(DatabaseError::value_error)?;
-            let is_default: bool = row.try_get(2).map_err(DatabaseError::value_error)?;
+            .query(self.query_schema.regions_by_id(), &[&ids])
+            .map_err(DatabaseError::query_execution_error)?;
 
-            builder.insert_name(language, name, is_default);
-        }
-
-        Ok(builder.build())
+        self.collect_regions(rows)
     }
 
     pub fn regions_by_name(&mut self, name: &str) -> DatabaseResult<HashMap<i64, Region>> {
         debug!("Get regions by name: name = {}", name);
 
-        let mut builders = HashMap::new();
-
-        for row in self
+        let rows = self
             .client
             .query(self.query_schema.regions_by_name(), &[&name])
-            .map_err(DatabaseError::query_execution_error)?
-        {
+            .map_err(DatabaseError::query_execution_error)?;
+
+        self.collect_regions(rows)
+    }
+
+    #[inline]
+    fn collect_regions(&self, result: Vec<Row>) -> DatabaseResult<HashMap<i64, Region>> {
+        let mut builders = HashMap::new();
+
+        for row in result {
             let id: i64 = row.try_get(0).map_err(DatabaseError::value_error)?;
             let language: String = row.try_get(1).map_err(DatabaseError::value_error)?;
             let name: String = row.try_get(2).map_err(DatabaseError::value_error)?;
@@ -105,14 +108,19 @@ impl<'a> DatabaseClient<'a> {
             .collect())
     }
 
-    pub fn hierarchy_by_id(&mut self, id: i64) -> DatabaseResult<Vec<Hierarchy>> {
-        debug!("Get hierarchy by id: id = {}", id);
+    pub fn hierarchy_by_id<I>(&mut self, it: I) -> DatabaseResult<Vec<Hierarchy>>
+    where
+        I: IntoIterator<Item = i64>,
+    {
+        let ids: Vec<i64> = it.into_iter().collect();
+
+        debug!("Get hierarchy by id: ids = {:?}", ids);
 
         let mut result = Vec::new();
 
         for row in self
             .client
-            .query(self.query_schema.hierarchy_by_id(), &[&id])
+            .query(self.query_schema.hierarchy_by_id(), &[&ids])
             .map_err(DatabaseError::query_execution_error)?
         {
             let id: i64 = row.try_get(0).map_err(DatabaseError::value_error)?;
@@ -135,6 +143,7 @@ impl<'a> DatabaseClient<'a> {
 struct RegionBuilder {
     default_name: Option<String>,
     names: Vec<RegionName>,
+    lower_name_set: HashSet<String>,
 }
 
 impl RegionBuilder {
@@ -142,6 +151,7 @@ impl RegionBuilder {
         RegionBuilder {
             default_name: None,
             names: Vec::new(),
+            lower_name_set: HashSet::new(),
         }
     }
 
@@ -150,7 +160,8 @@ impl RegionBuilder {
             self.default_name = Some(name.clone());
         }
 
-        self.names.push(RegionName::new(language, name));
+        self.names.push(RegionName::new(language, name.clone()));
+        self.lower_name_set.insert(name.to_lowercase());
     }
 
     fn build(self) -> Region {
@@ -158,7 +169,7 @@ impl RegionBuilder {
             .default_name
             .unwrap_or_else(|| "<no default name>".into());
 
-        Region::new(default_name, self.names)
+        Region::new(default_name, self.names, self.lower_name_set)
     }
 }
 
@@ -170,12 +181,11 @@ pub struct Region {
 }
 
 impl Region {
-    fn new(default_name: String, names: Vec<RegionName>) -> Region {
-        let lower_name_set = names
-            .iter()
-            .map(|region_name| region_name.name().to_lowercase())
-            .collect();
-
+    fn new(
+        default_name: String,
+        names: Vec<RegionName>,
+        lower_name_set: HashSet<String>,
+    ) -> Region {
         Region {
             default_name,
             names,

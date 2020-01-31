@@ -56,7 +56,7 @@ pub struct ConnectionSettings {
 
 impl ConnectionSettings {
     pub fn description(&self) -> &str {
-        &self.host
+        &self.description
     }
 
     pub fn query_schema(&self) -> &str {
@@ -86,14 +86,14 @@ impl ConnectionSettings {
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct QuerySchemaSettings {
-    region_by_id: String,
+    regions_by_id: String,
     regions_by_name: String,
     hierarchy_by_id: String,
 }
 
 impl QuerySchemaSettings {
-    pub fn region_by_id(&self) -> &str {
-        &self.region_by_id
+    pub fn regions_by_id(&self) -> &str {
+        &self.regions_by_id
     }
 
     pub fn regions_by_name(&self) -> &str {
