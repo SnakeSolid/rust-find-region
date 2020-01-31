@@ -1,5 +1,7 @@
 use super::util::handle_empty;
 use crate::config::ConfigRef;
+use crate::config::ConnectionSettings;
+use crate::manager::DynamicConnectionsRef;
 use iron::middleware::Handler;
 use iron::IronResult;
 use iron::Request as IromRequest;
@@ -8,37 +10,37 @@ use iron::Response as IromResponse;
 #[derive(Debug)]
 pub struct ConnectionsHandler {
     config: ConfigRef,
+    dynamic_connections: DynamicConnectionsRef,
 }
 
 impl ConnectionsHandler {
-    pub fn new(config: ConfigRef) -> ConnectionsHandler {
-        ConnectionsHandler { config }
+    pub fn new(
+        config: ConfigRef,
+        dynamic_connections: DynamicConnectionsRef,
+    ) -> ConnectionsHandler {
+        ConnectionsHandler {
+            config,
+            dynamic_connections,
+        }
     }
 }
 
 impl Handler for ConnectionsHandler {
     fn handle(&self, _req: &mut IromRequest) -> IronResult<IromResponse> {
         handle_empty(move || {
-            let mut connections = Vec::new();
-
-            for (index, connection) in self
+            let mut connections: Vec<Connection> = self
                 .config
                 .connections()
                 .static_connections()
                 .iter()
                 .enumerate()
-            {
-                let description = format!(
-                    "{} ({}@{}/{})",
-                    connection.description(),
-                    connection.role(),
-                    connection.host(),
-                    connection.database()
-                );
-                let connection = Connection::new(index, &description);
+                .map(|connection| connection.into())
+                .collect();
+            let _ = self
+                .dynamic_connections
+                .for_each(|index, connection| connections.push((index, connection).into()));
 
-                connections.push(connection);
-            }
+            connections.sort_by_key(|connection| connection.index);
 
             Ok(connections)
         })
@@ -57,5 +59,21 @@ impl Connection {
             index,
             description: description.into(),
         }
+    }
+}
+
+impl From<(usize, &ConnectionSettings)> for Connection {
+    fn from(value: (usize, &ConnectionSettings)) -> Connection {
+        let index = value.0;
+        let connection = value.1;
+        let description = format!(
+            "{} ({}@{}/{})",
+            connection.description(),
+            connection.role(),
+            connection.host(),
+            connection.database()
+        );
+
+        Connection::new(index, &description)
     }
 }

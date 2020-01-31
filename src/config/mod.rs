@@ -55,6 +55,26 @@ pub struct ConnectionSettings {
 }
 
 impl ConnectionSettings {
+    pub fn new(
+        description: &str,
+        query_schema: &str,
+        host: &str,
+        database: &str,
+        port: u16,
+        role: &str,
+        password: Option<&str>,
+    ) -> ConnectionSettings {
+        ConnectionSettings {
+            description: description.into(),
+            query_schema: query_schema.into(),
+            host: host.into(),
+            database: database.into(),
+            port,
+            role: role.into(),
+            password: password.map(String::from),
+        }
+    }
+
     pub fn description(&self) -> &str {
         &self.description
     }

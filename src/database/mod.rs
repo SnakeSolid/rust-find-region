@@ -14,15 +14,12 @@ use std::collections::HashSet;
 
 #[derive(Debug)]
 pub struct Database<'a> {
-    settings: &'a ConnectionSettings,
+    settings: ConnectionSettings,
     query_schema: &'a QuerySchemaSettings,
 }
 
 impl<'a> Database<'a> {
-    pub fn new<'t>(
-        settings: &'t ConnectionSettings,
-        query_schema: &'t QuerySchemaSettings,
-    ) -> Database<'t> {
+    pub fn new(settings: ConnectionSettings, query_schema: &QuerySchemaSettings) -> Database {
         Database {
             settings,
             query_schema,

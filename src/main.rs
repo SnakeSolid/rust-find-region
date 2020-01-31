@@ -7,6 +7,7 @@ mod config;
 mod database;
 mod error;
 mod handler;
+mod manager;
 mod options;
 mod server;
 
@@ -21,7 +22,8 @@ fn main() -> ApplicationResult {
     let options = Options::from_args();
     let config =
         config::load(options.config_path()).map_err(ApplicationError::read_config_error)?;
+    let dynamic_connections = manager::dynamic_connections();
 
     config::validate(config.clone()).map_err(ApplicationError::config_error)?;
-    server::start(&options, config)
+    server::start(&options, config, dynamic_connections)
 }

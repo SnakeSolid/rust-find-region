@@ -6,6 +6,7 @@ use crate::database::Region as DbRegion;
 use crate::handler::error::HandlerError;
 use crate::handler::error::HandlerResult;
 use crate::handler::util::handle_request;
+use crate::manager::DynamicConnectionsRef;
 use iron::middleware::Handler;
 use iron::IronResult;
 use iron::Request as IromRequest;
@@ -16,11 +17,17 @@ use std::collections::HashSet;
 #[derive(Debug)]
 pub struct FindRegionHandler {
     config: ConfigRef,
+    dynamic_connections: DynamicConnectionsRef,
 }
 
+const QUERY_SEPARATOR: char = '>';
+
 impl FindRegionHandler {
-    pub fn new(config: ConfigRef) -> FindRegionHandler {
-        FindRegionHandler { config }
+    pub fn new(config: ConfigRef, dynamic_connections: DynamicConnectionsRef) -> FindRegionHandler {
+        FindRegionHandler {
+            config,
+            dynamic_connections,
+        }
     }
 
     fn prepare_query(&self, query: String) -> HandlerResult<(String, Vec<String>)> {
@@ -29,7 +36,7 @@ impl FindRegionHandler {
         }
 
         let query_parts: Vec<_> = query
-            .split('>')
+            .split(QUERY_SEPARATOR)
             .map(|name| name.trim().to_lowercase())
             .collect();
 
@@ -44,7 +51,9 @@ impl FindRegionHandler {
     }
 
     fn prepare_connection(&self, index: usize) -> HandlerResult<DatabaseClient> {
-        let connection = match self.config.connections().static_connections().get(index) {
+        let dynamic_connection = self.dynamic_connections.get(index).unwrap_or(None);
+        let static_connection = self.config.connections().static_connections().get(index);
+        let connection = match static_connection.cloned().or(dynamic_connection) {
             Some(connection) => connection,
             None => {
                 return Err(HandlerError::new(&format!(
@@ -144,12 +153,6 @@ impl Handler for FindRegionHandler {
                 self.collect_all_regions(&mut client, &query_regions, &extended_hierarchies)?;
             let query_hierarchies =
                 self.collect_query_hierarchies(&query_parts, &all_regions, &extended_hierarchies);
-
-            // println!("       query_regions = {:?}", query_regions);
-            // println!("extended_hierarchies = {:?}", extended_hierarchies);
-            // println!("         all_regions = {:?}", all_regions);
-            // println!("   query_hierarchies = {:?}", query_hierarchies);
-
             let regions = all_regions
                 .into_iter()
                 .map(|(id, region)| (id, region.into()))
