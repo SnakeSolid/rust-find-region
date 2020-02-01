@@ -11,6 +11,7 @@ use postgres::Client;
 use postgres::NoTls;
 use std::collections::HashMap;
 use std::collections::HashSet;
+use std::time::Duration;
 
 #[derive(Debug)]
 pub struct Database<'a> {
@@ -36,6 +37,8 @@ impl<'a> Database<'a> {
         if let Some(ref password) = self.settings.password() {
             config.password(password);
         }
+
+        config.connect_timeout(Duration::from_secs(10));
 
         let client = config
             .connect(NoTls)
