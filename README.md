@@ -24,7 +24,9 @@ Simple configuration example:
 ```yaml
 ---
 connections:
-  update_command: ~ # Command to dynamically generate connection list
+  dynamic_connections:
+    interval: 3600 # Update interval in seconds
+    command: "./update_connections.sh" # Command to dynamically generate connection list, see dynamic connections section
   static_connections: # Connections which always present in connections
     - description: "regions" # connection description
       query_schema: "SCHEMA" # query schema name, link to `query_schemas`
@@ -47,11 +49,12 @@ query_schemas: # contains map query schema name to schema
       order by feature_id, language_code, name
     region_by_id: | # query to select all region names using region identifier
       select
+        region_id::bigint as id,
         language_code as language_code,
         name as name,
         is_default
       from region_names
-      where region_id::bigint = $1
+      where region_id::bigint = any($1)
       order by language_code, name
     hierarchy_by_id: | # query to select region administrative hierarchy
       select
@@ -62,6 +65,27 @@ query_schemas: # contains map query schema name to schema
         level_4::bigint as level_4,
         level_5::bigint as level_5
       from region_hierarchy
-      where id::bigint = $1
+      where id::bigint = any($1)
       order by id
 ```
+
+## Dynamic Connections
+
+Dynamic connection command must generate output in following format:
+
+```text
+description: Connection description
+query schema: SCHEMA
+host: localhost
+port: 5432
+database: database name
+role: user name
+password: password
+~~~
+```
+
+Where fields `port` and `password` are optional. Single field can be repeated many time, but only last value will be
+used in connection. String `~~~` means that connection finished and can be saved. If connection contains incorrect
+`port` value or missing required parameters it will be ignored.
+
+Command must return all available connections for every run.
