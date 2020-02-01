@@ -1,12 +1,11 @@
+use super::Config;
 use super::ConfigError;
-use super::ConfigRef;
 use super::ConfigResult;
 use super::ConnectionSettings;
-
 use std::path::Path;
 
 #[allow(clippy::needless_pass_by_value)]
-pub fn validate(config: ConfigRef) -> ConfigResult<()> {
+pub fn validate(config: &Config) -> ConfigResult<()> {
     let query_schemas = config.query_schemas();
 
     if let Some(schema_name) = config
@@ -23,11 +22,26 @@ pub fn validate(config: ConfigRef) -> ConfigResult<()> {
         )));
     }
 
-    if let Some(command) = config.connections().update_command() {
-        validate_file(command, "connections.update_command")?;
+    if let Some(dynamic_connections) = config.connections().dynamic_connections() {
+        let interval = dynamic_connections.interval();
+        let command = dynamic_connections.command();
+
+        validate_number(interval, "dynamic_connections.interval")?;
+        validate_file(command, "dynamic_connections.command")?;
     }
 
     Ok(())
+}
+
+fn validate_number(value: u64, name: &str) -> ConfigResult<()> {
+    if value > 0 {
+        Ok(())
+    } else {
+        Err(ConfigError::format(format_args!(
+            "Value `{}` must be greater than zero, but {} given",
+            name, value
+        )))
+    }
 }
 
 fn validate_file<P>(path: P, name: &str) -> ConfigResult<()>

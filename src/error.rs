@@ -1,4 +1,5 @@
 use crate::config::ConfigError;
+use crate::worker::UpdateConnectionsError;
 use iron::error::HttpError;
 use std::error::Error;
 use std::fmt::Display;
@@ -11,6 +12,7 @@ pub type ApplicationResult = Result<(), ApplicationError>;
 pub enum ApplicationError {
     LoadConfigError { message: String },
     ConfigError { message: String },
+    UpdateConnectionsError { message: String },
     ServerError { message: String },
 }
 
@@ -31,6 +33,14 @@ impl ApplicationError {
         }
     }
 
+    pub fn update_connections_error(error: UpdateConnectionsError) -> ApplicationError {
+        error!("Update connections error - {}", error);
+
+        ApplicationError::UpdateConnectionsError {
+            message: format!("{}", error),
+        }
+    }
+
     pub fn server_error(error: HttpError) -> ApplicationError {
         error!("Server error - {}", error);
 
@@ -47,6 +57,7 @@ impl Display for ApplicationError {
         match self {
             ApplicationError::LoadConfigError { message } => write!(f, "{}", message),
             ApplicationError::ConfigError { message } => write!(f, "{}", message),
+            ApplicationError::UpdateConnectionsError { message } => write!(f, "{}", message),
             ApplicationError::ServerError { message } => write!(f, "{}", message),
         }
     }

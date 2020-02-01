@@ -4,6 +4,7 @@ mod validate;
 pub use self::error::ConfigError;
 pub use self::error::ConfigResult;
 pub use self::validate::validate;
+
 use std::collections::HashMap;
 use std::fs::File;
 use std::path::Path;
@@ -29,13 +30,13 @@ impl Config {
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct ConnectionsSettings {
-    update_command: Option<String>,
+    dynamic_connections: Option<DynamicConnectionsSettings>,
     static_connections: Vec<ConnectionSettings>,
 }
 
 impl ConnectionsSettings {
-    pub fn update_command(&self) -> Option<&String> {
-        self.update_command.as_ref()
+    pub fn dynamic_connections(&self) -> Option<&DynamicConnectionsSettings> {
+        self.dynamic_connections.as_ref()
     }
 
     pub fn static_connections(&self) -> &[ConnectionSettings] {
@@ -44,37 +45,33 @@ impl ConnectionsSettings {
 }
 
 #[derive(Debug, Clone, Deserialize)]
+pub struct DynamicConnectionsSettings {
+    interval: u64,
+    command: String,
+}
+
+impl DynamicConnectionsSettings {
+    pub fn interval(&self) -> u64 {
+        self.interval
+    }
+
+    pub fn command(&self) -> &str {
+        &self.command
+    }
+}
+
+#[derive(Debug, Clone, Deserialize)]
 pub struct ConnectionSettings {
     description: String,
     query_schema: String,
     host: String,
+    port: Option<u16>,
     database: String,
-    port: u16,
     role: String,
     password: Option<String>,
 }
 
 impl ConnectionSettings {
-    pub fn new(
-        description: &str,
-        query_schema: &str,
-        host: &str,
-        database: &str,
-        port: u16,
-        role: &str,
-        password: Option<&str>,
-    ) -> ConnectionSettings {
-        ConnectionSettings {
-            description: description.into(),
-            query_schema: query_schema.into(),
-            host: host.into(),
-            database: database.into(),
-            port,
-            role: role.into(),
-            password: password.map(String::from),
-        }
-    }
-
     pub fn description(&self) -> &str {
         &self.description
     }
@@ -87,7 +84,7 @@ impl ConnectionSettings {
         &self.host
     }
 
-    pub fn port(&self) -> u16 {
+    pub fn port(&self) -> Option<u16> {
         self.port
     }
 
@@ -133,4 +130,24 @@ where
     let config = serde_yaml::from_reader(reader).map_err(ConfigError::yaml_error)?;
 
     Ok(Arc::new(config))
+}
+
+pub fn connection_settings(
+    description: &str,
+    query_schema: &str,
+    host: &str,
+    port: Option<u16>,
+    database: &str,
+    role: &str,
+    password: Option<&String>,
+) -> ConnectionSettings {
+    ConnectionSettings {
+        description: description.into(),
+        query_schema: query_schema.into(),
+        host: host.into(),
+        port,
+        database: database.into(),
+        role: role.into(),
+        password: password.cloned(),
+    }
 }

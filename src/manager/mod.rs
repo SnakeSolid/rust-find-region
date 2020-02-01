@@ -3,6 +3,7 @@ mod error;
 pub use self::error::DynamicConnectionsError;
 pub use self::error::DynamicConnectionsResult;
 
+use crate::config::Config;
 use crate::config::ConnectionSettings;
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -52,7 +53,31 @@ impl DynamicConnectionsRef {
     {
         self.with_read(move |manager| {
             manager.for_each(callback);
+            Ok(())
+        })
+    }
 
+    pub fn update(
+        &self,
+        index: usize,
+        connection: ConnectionSettings,
+    ) -> DynamicConnectionsResult<()> {
+        self.with_write(move |manager| {
+            manager.update(index, connection);
+            Ok(())
+        })
+    }
+
+    pub fn insert(&self, connection: ConnectionSettings) -> DynamicConnectionsResult<()> {
+        self.with_write(move |manager| {
+            manager.insert(connection);
+            Ok(())
+        })
+    }
+
+    pub fn remove(&self, index: usize) -> DynamicConnectionsResult<()> {
+        self.with_write(move |manager| {
+            manager.remove(index);
             Ok(())
         })
     }
@@ -60,17 +85,21 @@ impl DynamicConnectionsRef {
 
 #[derive(Debug)]
 struct DynamicConnections {
+    valid_index: usize,
     connections: HashMap<usize, ConnectionSettings>,
 }
 
 impl DynamicConnections {
-    fn new() -> DynamicConnections {
+    fn new(valid_index: usize) -> DynamicConnections {
         DynamicConnections {
+            valid_index,
             connections: HashMap::new(),
         }
     }
 
     fn get(&self, index: usize) -> Option<&ConnectionSettings> {
+        debug!("Get dynamic connection: index = {}", index);
+
         self.connections.get(&index)
     }
 
@@ -82,10 +111,38 @@ impl DynamicConnections {
             .iter()
             .for_each(|(&index, connection)| callback(index, connection))
     }
+
+    fn update(&mut self, index: usize, connection: ConnectionSettings) {
+        debug!(
+            "Update dynamic connection: index = {}, connection = {:?}",
+            index, connection
+        );
+
+        self.connections.insert(index, connection);
+    }
+
+    fn insert(&mut self, connection: ConnectionSettings) {
+        debug!(
+            "Insert dynamic connection: valid_index = {}, connection = {:?}",
+            self.valid_index, connection
+        );
+
+        self.connections.insert(self.valid_index, connection);
+
+        self.valid_index += 1;
+    }
+
+    fn remove(&mut self, index: usize) {
+        debug!("Remove dynamic connection: index = {}", index,);
+
+        self.connections.remove(&index);
+    }
 }
 
-pub fn dynamic_connections() -> DynamicConnectionsRef {
+pub fn dynamic_connections(config: &Config) -> DynamicConnectionsRef {
+    let valid_index = config.connections().static_connections().len();
+
     DynamicConnectionsRef {
-        inner: Arc::new(RwLock::new(DynamicConnections::new())),
+        inner: Arc::new(RwLock::new(DynamicConnections::new(valid_index))),
     }
 }

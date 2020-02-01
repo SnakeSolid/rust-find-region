@@ -19,6 +19,8 @@ pub struct Database<'a> {
     query_schema: &'a QuerySchemaSettings,
 }
 
+const DEFAULT_PORT: u16 = 5432;
+
 impl<'a> Database<'a> {
     pub fn new(settings: ConnectionSettings, query_schema: &QuerySchemaSettings) -> Database {
         Database {
@@ -30,7 +32,7 @@ impl<'a> Database<'a> {
     pub fn connect(self) -> DatabaseResult<DatabaseClient<'a>> {
         let mut config = Config::new();
         config.host(&self.settings.host());
-        config.port(self.settings.port());
+        config.port(self.settings.port().unwrap_or(DEFAULT_PORT));
         config.dbname(&self.settings.database());
         config.user(&self.settings.role());
 
