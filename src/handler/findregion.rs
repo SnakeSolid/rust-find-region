@@ -201,6 +201,7 @@ impl Handler for FindRegionHandler {
 }
 
 #[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 struct Request {
     connection: usize,
     query: String,
