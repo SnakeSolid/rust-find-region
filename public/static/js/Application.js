@@ -46,6 +46,41 @@ define(["knockout", "reqwest"], function(ko, reqwest) {
 		}, this);
 
 		this.updateConnections();
+		this.loadBiggerRegionSettings();
+	};
+
+	Application.prototype.loadSettings = function(name, callback) {
+		const storedSettings = localStorage.getItem("settings");
+
+		if (storedSettings === null) {
+			return;
+		}
+
+		const settings = ko.utils.parseJson(storedSettings);
+
+		callback(settings[name]);
+	};
+
+	Application.prototype.loadBiggerRegionSettings = function() {
+		this.loadSettings("showBiggerRegions", this.showBiggerRegions);
+	};
+
+	Application.prototype.loadConnectionSettings = function() {
+		this.loadSettings("selectedConnection", this.selectedConnection);
+	};
+
+	Application.prototype.loadLanguageSettings = function() {
+		this.loadSettings("preferredLanguage", this.preferredLanguage);
+	};
+
+	Application.prototype.saveSettings = function() {
+		const settings = ko.utils.stringifyJson({
+			selectedConnection: this.selectedConnection(),
+			preferredLanguage: this.preferredLanguage(),
+			showBiggerRegions: this.showBiggerRegions(),
+		});
+
+		localStorage.setItem("settings", settings);
 	};
 
 	Application.prototype.updateConnections = function() {
@@ -60,7 +95,7 @@ define(["knockout", "reqwest"], function(ko, reqwest) {
 				function(resp) {
 					if (resp.success) {
 						this.availableConnections(resp.result);
-						this.selectedConnection(undefined);
+						this.loadConnectionSettings();
 						this.errorMessage("");
 					} else {
 						this.errorMessage(resp.message);
@@ -96,7 +131,6 @@ define(["knockout", "reqwest"], function(ko, reqwest) {
 						this.regionNames(resp.result.regions);
 						this.regionHierarchies(resp.result.hierarchies);
 						this.errorMessage("");
-
 						this.updateLanguageList();
 					} else {
 						this.regionNames({});
@@ -125,6 +159,7 @@ define(["knockout", "reqwest"], function(ko, reqwest) {
 		});
 
 		this.availableLanguages(Array.from(languages).sort());
+		this.loadLanguageSettings();
 	};
 
 	Application.prototype.namedHierarhy = function(hierarchy) {
