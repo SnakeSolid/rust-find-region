@@ -135,7 +135,7 @@ define(["knockout", "reqwest", "handlers"], function(ko, reqwest, _handlers) {
 		for (const partId of hierarchy.parts) {
 			if (partId in regionNames) {
 				const region = regionNames[partId];
-				const name = region.names[preferredLanguage] || region.default_name;
+				const name = region.names[preferredLanguage] || region.defaultName;
 
 				partNames.push(name);
 			} else {
@@ -147,7 +147,7 @@ define(["knockout", "reqwest", "handlers"], function(ko, reqwest, _handlers) {
 	};
 
 	Application.prototype.areaCode = function(hierarchy) {
-		return `<Area adminPlaceID="${hierarchy.region_id}"/>`;
+		return `<Area adminPlaceID="${hierarchy.regionId}"/>`;
 	};
 
 	return Application;

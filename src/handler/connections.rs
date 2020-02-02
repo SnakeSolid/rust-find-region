@@ -48,6 +48,7 @@ impl Handler for ConnectionsHandler {
 }
 
 #[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
 struct Connection {
     index: usize,
     description: String,

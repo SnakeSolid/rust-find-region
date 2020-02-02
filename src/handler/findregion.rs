@@ -207,12 +207,14 @@ struct Request {
 }
 
 #[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
 struct Response {
     regions: HashMap<i64, Region>,
     hierarchies: Vec<Hierarchy>,
 }
 
 #[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
 struct Region {
     default_name: String,
     names: HashMap<String, String>,
@@ -232,6 +234,7 @@ impl From<DbRegion> for Region {
 }
 
 #[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
 struct Hierarchy {
     id: i64,
     region_id: i64,
