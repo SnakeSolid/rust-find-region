@@ -73,15 +73,24 @@
               />
             </div>
 
+            <div class="field">
+              <div class="field">
+                <div class="ui checkbox">
+                  <input type="checkbox" id="show-bigger" tabindex="4" class="hidden" data-bind="checked: showBiggerRegions">
+                  <label for="show-bigger">Show bigger regions</label>
+                </div>
+              </div>
+            </div>
+
             <div class="two ui buttons">
               <button
                 class="ui primary button"
-                tabindex="4"
+                tabindex="5"
                 data-bind="css: { disabled: isFormInvalid }, click: searchRegion"
               >
                 Search
               </button>
-              <button type="submit" class="ui button" tabindex="5" data-bind="click: updateConnections">
+              <button type="submit" class="ui button" tabindex="6" data-bind="click: updateConnections">
                 Update connections
               </button>
             </div>
@@ -97,7 +106,7 @@
               </tr>
             </thead>
 
-            <tbody data-bind="foreach: regionHierarchies">
+            <tbody data-bind="foreach: regionHierarchiesFiltered">
               <tr data-bind="css: { warning: bigger }">
                 <td>
                   <i

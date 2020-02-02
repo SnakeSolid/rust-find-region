@@ -8,6 +8,7 @@ define(["knockout", "reqwest", "handlers"], function(ko, reqwest, _handlers) {
 		this.queryRegionHierarchy = ko.observable("");
 		this.preferredLanguage = ko.observable("");
 		this.availableLanguages = ko.observableArray([]);
+		this.showBiggerRegions = ko.observable(false);
 		this.regionNames = ko.observable({});
 		this.regionHierarchies = ko.observableArray([]);
 		this.errorMessage = ko.observable("");
@@ -34,6 +35,14 @@ define(["knockout", "reqwest", "handlers"], function(ko, reqwest, _handlers) {
 
 		this.isErrorMessagePresent = ko.pureComputed(function() {
 			return this.errorMessage() !== "";
+		}, this);
+
+		this.regionHierarchiesFiltered = ko.pureComputed(function() {
+			if (this.showBiggerRegions()) {
+				return this.regionHierarchies();
+			} else {
+				return this.regionHierarchies().filter(hierarchy => !hierarchy.bigger);
+			}
 		}, this);
 
 		this.updateConnections();
