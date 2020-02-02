@@ -1,6 +1,6 @@
 "use strict";
 
-define(["knockout", "reqwest", "handlers"], function(ko, reqwest, _handlers) {
+define(["knockout", "reqwest"], function(ko, reqwest) {
 	const Application = function() {
 		this.loading = ko.observable(false);
 		this.selectedConnection = ko.observable(undefined);
