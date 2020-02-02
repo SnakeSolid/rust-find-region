@@ -89,11 +89,7 @@
             </div>
 
             <div class="two ui buttons">
-              <button
-                class="ui primary button"
-                tabindex="5"
-                data-bind="css: { disabled: isFormInvalid }, click: searchRegion"
-              >
+              <button class="ui primary button" tabindex="5" data-bind="disable: isFormInvalid, click: searchRegion">
                 Search
               </button>
               <button type="submit" class="ui button" tabindex="6" data-bind="click: updateConnections">
