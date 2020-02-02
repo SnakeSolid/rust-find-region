@@ -71,7 +71,7 @@ define(["knockout", "reqwest", "handlers"], function(ko, reqwest, _handlers) {
 			)
 			.fail(
 				function(err, msg) {
-					this.errorMessage(msg || err.responseText);
+					this.errorMessage(msg || err.responseText || "Server communication error");
 					this.loading(false);
 				}.bind(this)
 			);
@@ -109,7 +109,7 @@ define(["knockout", "reqwest", "handlers"], function(ko, reqwest, _handlers) {
 			)
 			.fail(
 				function(err, msg) {
-					this.errorMessage(msg || err.responseText);
+					this.errorMessage(msg || err.responseText || "Server communication error");
 					this.loading(false);
 				}.bind(this)
 			);
