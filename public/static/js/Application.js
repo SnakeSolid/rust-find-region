@@ -8,7 +8,7 @@ define(["knockout", "reqwest", "handlers"], function(ko, reqwest, _handlers) {
 		this.queryRegionHierarchy = ko.observable("");
 		this.preferredLanguage = ko.observable("");
 		this.availableLanguages = ko.observableArray([]);
-		this.showBiggerRegions = ko.observable(false);
+		this.showBiggerRegions = ko.observable(true);
 		this.regionNames = ko.observable({});
 		this.regionHierarchies = ko.observableArray([]);
 		this.errorMessage = ko.observable("");
@@ -147,7 +147,7 @@ define(["knockout", "reqwest", "handlers"], function(ko, reqwest, _handlers) {
 	};
 
 	Application.prototype.areaCode = function(hierarchy) {
-		return `<Area adminPlaceID="${hierarchy.id}"/>`;
+		return `<Area adminPlaceID="${hierarchy.region_id}"/>`;
 	};
 
 	return Application;

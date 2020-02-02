@@ -126,14 +126,15 @@ impl<'a> DatabaseClient<'a> {
             .map_err(DatabaseError::query_execution_error)?
         {
             let id: i64 = row.try_get(0).map_err(DatabaseError::value_error)?;
-            let level_1: Option<i64> = row.try_get(1).map_err(DatabaseError::value_error)?;
-            let level_2: Option<i64> = row.try_get(2).map_err(DatabaseError::value_error)?;
-            let level_3: Option<i64> = row.try_get(3).map_err(DatabaseError::value_error)?;
-            let level_4: Option<i64> = row.try_get(4).map_err(DatabaseError::value_error)?;
-            let level_5: Option<i64> = row.try_get(5).map_err(DatabaseError::value_error)?;
+            let region_id: i64 = row.try_get(1).map_err(DatabaseError::value_error)?;
+            let level_1: Option<i64> = row.try_get(2).map_err(DatabaseError::value_error)?;
+            let level_2: Option<i64> = row.try_get(3).map_err(DatabaseError::value_error)?;
+            let level_3: Option<i64> = row.try_get(4).map_err(DatabaseError::value_error)?;
+            let level_4: Option<i64> = row.try_get(5).map_err(DatabaseError::value_error)?;
+            let level_5: Option<i64> = row.try_get(6).map_err(DatabaseError::value_error)?;
 
             result.push(Hierarchy::new(
-                id, level_1, level_2, level_3, level_4, level_5,
+                id, region_id, level_1, level_2, level_3, level_4, level_5,
             ));
         }
 
@@ -235,12 +236,14 @@ impl RegionName {
 #[derive(Debug, Clone)]
 pub struct Hierarchy {
     id: i64,
+    region_id: i64,
     parts: Vec<i64>,
 }
 
 impl Hierarchy {
     fn new(
         id: i64,
+        region_id: i64,
         level_1: Option<i64>,
         level_2: Option<i64>,
         level_3: Option<i64>,
@@ -252,11 +255,19 @@ impl Hierarchy {
             .filter_map(|&part| part)
             .collect();
 
-        Hierarchy { id, parts }
+        Hierarchy {
+            id,
+            region_id,
+            parts,
+        }
     }
 
     pub fn id(&self) -> i64 {
         self.id
+    }
+
+    pub fn region_id(&self) -> i64 {
+        self.region_id
     }
 
     pub fn parts(&self) -> &[i64] {

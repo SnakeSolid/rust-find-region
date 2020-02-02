@@ -234,19 +234,18 @@ impl From<DbRegion> for Region {
 #[derive(Debug, Serialize)]
 struct Hierarchy {
     id: i64,
+    region_id: i64,
     parts: Vec<i64>,
     bigger: bool,
 }
 
 impl From<&DbHierarchy> for Hierarchy {
     fn from(hierarchy: &DbHierarchy) -> Hierarchy {
-        let bigger = match hierarchy.parts().last() {
-            Some(&id) => id != hierarchy.id(),
-            None => true,
-        };
+        let bigger = hierarchy.id() != hierarchy.region_id();
 
         Hierarchy {
             id: hierarchy.id(),
+            region_id: hierarchy.region_id(),
             parts: hierarchy.parts().into(),
             bigger,
         }

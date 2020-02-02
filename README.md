@@ -59,6 +59,7 @@ query_schemas: # contains map query schema name to schema
     hierarchy_by_id: | # query to select region administrative hierarchy
       select
         id::bigint as id,
+        region_id::bigint as region_id,
         level_1::bigint as level_1,
         level_2::bigint as level_2,
         level_3::bigint as level_3,
