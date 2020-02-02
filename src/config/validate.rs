@@ -13,8 +13,7 @@ pub fn validate(config: &Config) -> ConfigResult<()> {
         .static_connections()
         .iter()
         .map(ConnectionSettings::query_schema)
-        .filter(|&schema_name| !query_schemas.contains_key(schema_name))
-        .next()
+        .find(|&schema_name| !query_schemas.contains_key(schema_name))
     {
         return Err(ConfigError::format(format_args!(
             "Query schema {} is not defined in query_schemas",

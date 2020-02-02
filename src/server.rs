@@ -21,7 +21,7 @@ pub fn start(
     );
     mount.mount(
         "/api/v1/find_region",
-        FindRegionHandler::new(config.clone(), dynamic_connections.clone()),
+        FindRegionHandler::new(config, dynamic_connections),
     );
     mount.mount("/static", Static::new("public/static"));
     mount.mount("/", Static::new("public"));
