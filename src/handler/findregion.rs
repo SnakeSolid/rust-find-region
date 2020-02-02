@@ -45,7 +45,12 @@ impl FindRegionHandler {
         }
 
         match query_parts.last() {
-            Some(last) => Ok((last.into(), query_parts)),
+            Some(last) if last.chars().any(|ch| ch.is_alphanumeric()) => {
+                Ok((last.into(), query_parts))
+            }
+            Some(_) => Err(HandlerError::new(
+                "Region name must contains at least one letter or digit",
+            )),
             None => Err(HandlerError::new("Query must contain at least one part")),
         }
     }
@@ -131,10 +136,38 @@ impl FindRegionHandler {
 
     fn is_hierarchy_matches(
         &self,
-        _hierarchy: &DbHierarchy,
-        _query_parts: &[String],
-        _regions: &HashMap<i64, DbRegion>,
+        hierarchy: &DbHierarchy,
+        query_parts: &[String],
+        regions: &HashMap<i64, DbRegion>,
     ) -> bool {
+        let hierarchy_parts = hierarchy.parts();
+        let mut hierarchy_index = 0;
+
+        // Last part is required region and should be skipped.
+        for query_part in &query_parts[0..query_parts.len() - 1] {
+            loop {
+                match hierarchy_parts
+                    .get(hierarchy_index)
+                    .and_then(|index| regions.get(index))
+                {
+                    // If region name is present in query - skip this region and get next query part.
+                    Some(region) if region.contains_name(query_part) => {
+                        hierarchy_index += 1;
+
+                        break;
+                    }
+                    // If region name not in query - skip this region and continue search.
+                    Some(_) => hierarchy_index += 1,
+                    // If this region not loaded - accept this hierarchy to avoid false positive case.
+                    None => return true,
+                }
+
+                if hierarchy_index >= hierarchy_parts.len() {
+                    return false;
+                }
+            }
+        }
+
         true
     }
 }
