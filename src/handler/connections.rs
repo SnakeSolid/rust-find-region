@@ -40,7 +40,7 @@ impl Handler for ConnectionsHandler {
                 .dynamic_connections
                 .for_each(|index, connection| connections.push((index, connection).into()));
 
-            connections.sort_by_key(|connection| connection.index);
+            connections.sort_by(|a, b| a.description.cmp(&b.description));
 
             Ok(connections)
         })
